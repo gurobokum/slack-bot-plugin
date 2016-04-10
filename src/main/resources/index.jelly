@@ -1,4 +1,0 @@
-<?jelly escape-by-default='true'?>
-<div>
-    Slack bot plugin for slack command /jenkins
-</div>
