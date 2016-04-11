@@ -2,14 +2,18 @@
 
 ## Usage
 
-`POST /slack-bot/action`
-params:
+`POST /slack-bot/{action}`
+
+body payload:
 * `token` - slack token, required
 
 actions:
 * `build` - build a job
-  params:
-  * `name` - build name, required
+   body: `text="{job} [{branch}]`
+
+## Examples
+
+`curl --data "token=123&text=test origin/master" localhost:8080/slack-bot/build`
 
 ##LICENSE
 

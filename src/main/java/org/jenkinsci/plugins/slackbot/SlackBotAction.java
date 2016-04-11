@@ -23,9 +23,19 @@
  */
 
 package org.jenkinsci.plugins.slackbot;
+import java.util.Map;
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import jenkins.model.Jenkins;
 
 import hudson.Extension;
-import org.jenkinsci.plugins.build_token_root.BuildRootAction;
+import hudson.model.AbstractProject;
+import hudson.model.UnprotectedRootAction;
+import hudson.triggers.Trigger;
+
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
 
 /**
  * SlackBotAction
@@ -33,7 +43,64 @@ import org.jenkinsci.plugins.build_token_root.BuildRootAction;
  * @author Bokum Guro
  */
 @Extension
-public class SlackBotAction extends BuildRootAction {
-    public SlackBotAction() {
+public class SlackBotAction implements UnprotectedRootAction {
+    private static final String WEBHOOK_URL = "slack-bot";
+    private static final Logger LOGGER = Logger.getLogger(SlackBotAction.class.getName());
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getUrlName() {
+        return WEBHOOK_URL;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getDisplayName() {
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getIconFileName() {
+        return null;
+    }
+
+    public void doBuild(StaplerRequest req, StaplerResponse res) {
+        LOGGER.info("Build");
+        String text = req.getParameter("text");
+        if (text == null) {
+            return;
+        }
+        String[] params = text.split(" ");
+        String jobName = params[0];
+
+        AbstractProject job = getProjectByName(jobName);
+        if (job == null) {
+            LOGGER.log(Level.WARNING, "No job with name {0}", jobName);
+            return;
+        }
+
+        SlackBotTrigger trigger = (SlackBotTrigger)job.getTrigger(SlackBotTrigger.class);
+        if (trigger == null) {
+            LOGGER.warning("Slack bot trigger is not enabled");
+            return;
+        }
+
+        trigger.onBuildRequest(req, res);
+    }
+
+    private AbstractProject<?,?> getProjectByName(String name) {
+        for (AbstractProject<?,?> job: Jenkins.getInstance().getAllItems(AbstractProject.class)) {
+            if (name.equals(job.getName()) ) {
+                return job;
+            }
+        }
+        return null;
     }
 }

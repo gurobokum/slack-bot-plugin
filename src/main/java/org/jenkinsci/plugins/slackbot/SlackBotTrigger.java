@@ -23,39 +23,86 @@
  */
 package org.jenkinsci.plugins.slackbot;
 
+import java.util.logging.Logger;
+import java.util.logging.Level;
 import hudson.Extension;
+import hudson.model.AbstractProject;
+import hudson.model.Cause;
+import hudson.model.Descriptor;
 import hudson.model.Item;
-import hudson.model.Job;
+import hudson.model.ParametersAction;
+import hudson.model.StringParameterValue;
 import hudson.triggers.Trigger;
 import hudson.triggers.TriggerDescriptor;
-import hudson.tasks.BuildTrigger;
 
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.DataBoundConstructor;
 /**
  * SlackBotTrigger {@link Trigger}.
  *
  * @author Bokum Guro
  */
-public class SlackBotTrigger extends Trigger<Job> {
+public class SlackBotTrigger extends Trigger<AbstractProject> {
     private final String token;
+    private static final Logger LOGGER = Logger.getLogger(SlackBotTrigger.class.getName());
 
     @DataBoundConstructor
-    public SlackBotTrigger (String token) {
+    public SlackBotTrigger(String token) {
+        super();
         this.token = token;
+        LOGGER.log(Level.INFO, "Inited with {0} token", token);
+    }
+
+    public void onBuildRequest(StaplerRequest req, StaplerResponse res) {
+        LOGGER.info("BuildRequest");
+        String token = req.getParameter("token");
+
+        if (!this.token.equals(token)) {
+            LOGGER.warning("Auth failure");
+            return;
+        }
+
+        String[] params = req.getParameter("text").split(" ");
+        String branch = null;
+        if (params.length > 1) {
+            branch = params[1];
+        }
+        this.run(req.getRemoteAddr(), branch);
+    }
+
+
+    public void run(String host, String branch) {
+        LOGGER.log(Level.INFO, "Run {0}", branch);
+        try {
+            Cause cause = new Cause.RemoteCause(host, "from slack"); 
+            if (branch == null) {
+                job.scheduleBuild(cause);
+            } else {
+                //TODO: BRANCH_SELECTOR to .jelly
+                StringParameterValue value = new StringParameterValue("BRANCH_SELECTOR", branch);
+                ParametersAction params = new ParametersAction(value);
+                job.scheduleBuild(0, cause, params);
+            }
+        } catch (Exception e) {
+        }
+    }
+
+    public String getToken() {
+        return this.token;
     }
 
     @Extension
-    public static class DescriptorIml extends TriggerDescriptor {
-        public DescriptorIml() {
-        }
-
+    public static final class DescriptorImpl extends TriggerDescriptor {
         /**
          * {@inheritDoc}
          */
         @Override
         public boolean isApplicable(Item item) {
-            return item instanceof Job;
+            return item instanceof AbstractProject;
         }
+
+
 
         /**
          * {@inheritDoc}
@@ -63,6 +110,14 @@ public class SlackBotTrigger extends Trigger<Job> {
         @Override
         public String getDisplayName() {
             return "Slack bot";
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public String getHelpFile() {
+            return "/org/jenkinsci/slackbot/SlackBotTrigger/help.html";
         }
     }
 }
