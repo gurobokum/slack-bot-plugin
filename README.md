@@ -1,5 +1,18 @@
 # Slack bot plugin [![Build Status](https://travis-ci.org/JIoJIaJIu/slack-bot-plugin.svg?branch=master)](https://travis-ci.org/JIoJIaJIu/slack-bot-plugin)
 
+## Usage
+
+`POST /slack-bot/action`
+params:
+* `token` - slack token, required
+
+actions:
+* `build` - build a job
+  params:
+  * `name` - build name, required
+
+##LICENSE
+
 ```
 The MIT License (MIT)
 Copyright (c) 2016 Guro Bokum
